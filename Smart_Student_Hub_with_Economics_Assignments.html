@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Student Organizer</title>
+<style>
+:root{
+  --bg:#f5f7fb; --card:#ffffff; --text:#172033; --muted:#687386;
+  --accent:#5b67f1; --accent2:#7b83ff; --border:#e5e8f0;
+  --green:#16a34a; --red:#ef4444; --shadow:0 12px 35px rgba(30,40,80,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(135deg,#eef1ff,#f8fbff 55%,#f2f7f4);color:var(--text);min-height:100vh}
+.app{width:min(1050px,94%);margin:35px auto}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+h1{margin:0;font-size:34px;letter-spacing:-1px}
+.subtitle{color:var(--muted);margin-top:5px}
+.stats{display:flex;gap:10px;flex-wrap:wrap}
+.stat{background:var(--card);padding:12px 16px;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);text-align:center;min-width:80px}
+.stat b{display:block;font-size:20px}.stat span{font-size:12px;color:var(--muted)}
+
+/* Main Navigation Tabs */
+.tab-bar{display:flex;gap:12px;margin-bottom:20px}
+.tab-btn{
+  flex:1;padding:14px 20px;font-size:16px;font-weight:700;border:1px solid var(--border);
+  background:var(--card);color:var(--muted);border-radius:16px;cursor:pointer;
+  box-shadow:var(--shadow);transition:all .2s ease;text-align:center;
+}
+.tab-btn:hover{transform:translateY(-2px);color:var(--accent)}
+.tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Sub Tabs for HW / Assignment */
+.sub-tab-bar{display:flex;gap:10px;margin-bottom:15px}
+.sub-tab-btn{
+  padding:8px 16px;font-size:14px;font-weight:700;border:1px solid var(--border);
+  background:#f1f3f8;color:var(--muted);border-radius:10px;cursor:pointer;
+}
+.sub-tab-btn.active{background:var(--accent2);color:#fff;border-color:var(--accent2)}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow);padding:22px}
+
+/* Tab Content Visibility */
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* Section-Specific Form Layouts */
+.add-form{display:grid;gap:10px;margin-bottom:18px}
+.hw-form{grid-template-columns:2fr 1fr 1fr auto}
+.todo-form{grid-template-columns:2fr 2fr 1fr auto}
+.test-form{grid-template-columns:1.5fr 1.5fr 1fr 1.5fr 1fr auto}
+
+input,select,button{font:inherit}
+input,select{border:1px solid var(--border);background:#fbfcff;border-radius:12px;padding:12px;color:var(--text);outline:none;width:100%}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,103,241,.1)}
+button{border:0;border-radius:12px;padding:11px 15px;cursor:pointer;font-weight:700;transition:.15s}
+button:hover{transform:translateY(-1px)}
+.addbtn{background:var(--accent);color:white;white-space:nowrap}
+
+.controls{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.filter{background:#f2f4fa;color:#596277}
+.filter.active{background:var(--accent);color:white}
+.search{margin-left:auto;min-width:210px}
+
+.task-list{display:flex;flex-direction:column;gap:11px}
+.task{display:grid;grid-template-columns:42px 1fr auto;gap:12px;align-items:center;border:1px solid var(--border);border-radius:16px;padding:13px 14px;background:#fff}
+.check{width:38px;height:38px;border-radius:50%;padding:0;background:#eef0f6;color:#626b7d;font-size:16px;display:flex;align-items:center;justify-content:center}
+.task.done .check{background:#dcfce7;color:var(--green)}
+.task.done .title{text-decoration:line-through;color:#8b94a5}
+.title{font-weight:700}.meta{font-size:12px;color:var(--muted);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.badge{padding:3px 8px;border-radius:999px;background:#f1f3f8}
+.high{background:#fee2e2;color:#b91c1c}.medium{background:#fef3c7;color:#92400e}.low{background:#dcfce7;color:#166534}
+
+/* Task Specific Styles */
+.task-img{max-width:100%;max-height:180px;border-radius:10px;margin-top:8px;border:1px solid var(--border);display:block;object-fit:cover}
+
+.actions{display:flex;gap:7px}
+.donebtn{background:#ecfdf5;color:#15803d}
+.notbtn{background:#fff1f2;color:#be123c}
+.editbtn{background:#fef3c7;color:#92400e}
+.delete{background:#f3f4f6;color:#596277}
+.empty{text-align:center;padding:45px 15px;color:var(--muted)}
+.footer{margin-top:14px;color:var(--muted);font-size:12px;text-align:center}
+
+@media(max-width:900px){
+  .add-form{grid-template-columns:1fr 1fr}
+  .search{margin-left:0;width:100%}
+}
+@media(max-width:560px){
+  header{display:block}.stats{margin-top:15px}
+  .tab-bar{flex-direction:column;gap:8px}
+  .add-form{grid-template-columns:1fr}
+  .task{grid-template-columns:42px 1fr}.actions{grid-column:2}
+  .app{margin-top:20px}h1{font-size:28px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div><h1>✨ Smart Student Hub</h1><div class="subtitle">Homework, To-Dos & Test Preparation</div></div>
+  <div class="stats">
+    <div class="stat"><b id="total">0</b><span>Total</span></div>
+    <div class="stat"><b id="remaining">0</b><span>Left</span></div>
+    <div class="stat"><b id="completed">0</b><span>Done</span></div>
+  </div>
+</header>
+
+<!-- Main Navigation Tabs -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchSection('hw')">📚 Homework Section</button>
+  <button class="tab-btn" onclick="switchSection('todo')">✅ To-Do Section</button>
+  <button class="tab-btn" onclick="switchSection('test')">📝 Test Section</button>
+</div>
+
+<div class="card">
+  <!-- Homework Section -->
+  <div id="hw-section" class="tab-content active">
+    <!-- Sub-navigation for Homework tab -->
+    <div class="sub-tab-bar">
+      <button class="sub-tab-btn active" id="subTabHw" onclick="switchHwCategory('hw')">HW</button>
+      <button class="sub-tab-btn" id="subTabAssignment" onclick="switchHwCategory('assignment')">Assignment</button>
+    </div>
+
+    <form class="add-form hw-form" onsubmit="addHWTask(event)">
+      <input id="hwTitle" placeholder="Title" required>
+      <div><label style="font-size:10px;color:var(--muted)">From Date</label><input id="hwFromDate" type="date" required></div>
+      <div><label style="font-size:10px;color:var(--muted)">Submission Date</label><input id="hwSubDate" type="date" required></div>
+      <button class="addbtn" type="submit" id="hwSubmitBtn">＋ Add HW</button>
+    </form>
+  </div>
+
+  <!-- To-Do Section -->
+  <div id="todo-section" class="tab-content">
+    <form class="add-form todo-form" onsubmit="addTodoTask(event)">
+      <input id="todoTitle" placeholder="Task Title (e.g., Read this diagram before doing homework)" required>
+      <input id="todoImg" placeholder="Image URL (e.g., https://site.com/image.png)">
+      <select id="todoPriority">
+        <option value="medium">Medium priority</option>
+        <option value="high">High priority</option>
+        <option value="low">Low priority</option>
+      </select>
+      <button class="addbtn" type="submit">＋ Add Task</button>
+    </form>
+  </div>
+
+  <!-- Test Section -->
+  <div id="test-section" class="tab-content">
+    <form class="add-form test-form" onsubmit="addTestTask(event)">
+      <input id="testSubject" placeholder="Subject" required>
+      <input id="testChapter" placeholder="Chapter / Topics" required>
+      <div><label style="font-size:10px;color:var(--muted)">Study Plan Date</label><input id="testPlanDate" type="date" required></div>
+      <div><label style="font-size:10px;color:var(--muted)">Test Date</label><input id="testDate" type="date" required></div>
+      <select id="testPriority">
+        <option value="high">High priority</option>
+        <option value="medium">Medium priority</option>
+        <option value="low">Low priority</option>
+      </select>
+      <button class="addbtn" type="submit">＋ Add Test</button>
+    </form>
+  </div>
+
+  <!-- Shared Filter Controls -->
+  <div class="controls">
+    <button class="filter active" data-filter="all">All</button>
+    <button class="filter" data-filter="active">Not Done</button>
+    <button class="filter" data-filter="done">Done</button>
+    <input class="search" id="search" placeholder="🔎 Search tasks...">
+  </div>
+
+  <div class="task-list" id="taskList"></div>
+  <div class="footer">Your items are saved automatically in this browser. Use ✏️ Edit to change any item, or Delete to remove it.</div>
+</div>
+</div>
+
+<script>
+const KEY = "smartStudentPlannerV3";
+
+const defaultState = {
+  hw: [
+    {
+      id: "econ_hw_done_1",
+      category: "hw",
+      title: "Economics Homework",
+      fromDate: "2026-03-01",
+      subDate: "2026-03-05",
+      done: true
+    }
+  ],
+  todo: [],
+  test: []
+};
+
+let store = JSON.parse(localStorage.getItem(KEY)) || defaultState;
+
+// Seed the Economics study-plan dates as normal Assignment items.
+// They are stored in the same editable/deletable list as anything you add yourself.
+const economicsAssignments = [
+  {
+    "id": "econ_assignment_01",
+    "category": "assignment",
+    "title": "Ch 1 The nature of the basic economic problem (p 2),\nCh 2 Factors of production (p 10)",
+    "fromDate": "2026-10-05",
+    "subDate": "2026-10-05",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_02",
+    "category": "assignment",
+    "title": "Ch 3 Opportunity cost (p 23),\nCh 4 Production possibility curve diagrams (p 32)",
+    "fromDate": "2026-10-06",
+    "subDate": "2026-10-06",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_03",
+    "category": "assignment",
+    "title": "Section 1 practice questions (p 43), corrections\nTest 1: Ch 1 to 4",
+    "fromDate": "2026-10-07",
+    "subDate": "2026-10-07",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_04",
+    "category": "assignment",
+    "title": "Ch 5 The role of markets in allocating resources (p 46),\nCh 6 Demand (p 51),\nCh 7 Supply (p 64)",
+    "fromDate": "2026-10-08",
+    "subDate": "2026-10-08",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_05",
+    "category": "assignment",
+    "title": "Ch 8 Price determination (p 76),\nCh 9 Price changes (p 87)",
+    "fromDate": "2026-10-09",
+    "subDate": "2026-10-09",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_06",
+    "category": "assignment",
+    "title": "Diagram drills for Ch 5 to 9\nTest 2: Ch 5 to 9",
+    "fromDate": "2026-10-10",
+    "subDate": "2026-10-10",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_07",
+    "category": "assignment",
+    "title": "Ch 10 Price elasticity of demand (PED) (p 97)",
+    "fromDate": "2026-10-11",
+    "subDate": "2026-10-11",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_08",
+    "category": "assignment",
+    "title": "Ch 10 PED calculations\nCh 11 Price elasticity of supply (PES) (p 114)",
+    "fromDate": "2026-10-12",
+    "subDate": "2026-10-12",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_09",
+    "category": "assignment",
+    "title": "Ch 12 Market economic system (p 125)\nCh 13 Market failure (p 137)",
+    "fromDate": "2026-10-13",
+    "subDate": "2026-10-13",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_10",
+    "category": "assignment",
+    "title": "Ch 14 Mixed economic system (p 150)",
+    "fromDate": "2026-10-14",
+    "subDate": "2026-10-14",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_11",
+    "category": "assignment",
+    "title": "Section 2 practice questions (p 166), diagram drills\nTest 3: Ch 10 to 14",
+    "fromDate": "2026-10-15",
+    "subDate": "2026-10-15",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_12",
+    "category": "assignment",
+    "title": "Ch 15 Money and banking (p 170),\nCh 16 Households (p 183)",
+    "fromDate": "2026-10-16",
+    "subDate": "2026-10-16",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_13",
+    "category": "assignment",
+    "title": "Ch 17 Workers (p 196)",
+    "fromDate": "2026-10-17",
+    "subDate": "2026-10-17",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_14",
+    "category": "assignment",
+    "title": "Ch 18 Firms (p 223)",
+    "fromDate": "2026-10-18",
+    "subDate": "2026-10-18",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_15",
+    "category": "assignment",
+    "title": "Ch 19 Firms and production (p 240)",
+    "fromDate": "2026-10-19",
+    "subDate": "2026-10-19",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_16",
+    "category": "assignment",
+    "title": "Ch 20 Firms' costs, revenue and objectives (p 251)\nCh 21 Types of markets (p 268)",
+    "fromDate": "2026-10-20",
+    "subDate": "2026-10-20",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_17",
+    "category": "assignment",
+    "title": "Cost and revenue calculations, mind map for Ch 20 and 21",
+    "fromDate": "2026-10-21",
+    "subDate": "2026-10-21",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_18",
+    "category": "assignment",
+    "title": "Section 3 practice questions (p 279), recap\nTest 4: Ch 15 to 21",
+    "fromDate": "2026-10-22",
+    "subDate": "2026-10-22",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_19",
+    "category": "assignment",
+    "title": "Ch 22 Government macroeconomic intervention (p 284)\nCh 23 Fiscal policy (p 297)",
+    "fromDate": "2026-10-23",
+    "subDate": "2026-10-23",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_20",
+    "category": "assignment",
+    "title": "Ch 24 Monetary policy\nCh 25 Supply-side policy",
+    "fromDate": "2026-10-24",
+    "subDate": "2026-10-24",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_21",
+    "category": "assignment",
+    "title": "Compare fiscal, monetary and supply-side policies against each macroeconomic aim",
+    "fromDate": "2026-10-25",
+    "subDate": "2026-10-25",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_22",
+    "category": "assignment",
+    "title": "Corrections and recap\nTest 5: Ch 22 to 25",
+    "fromDate": "2026-10-26",
+    "subDate": "2026-10-26",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_23",
+    "category": "assignment",
+    "title": "Ch 26 Economic growth",
+    "fromDate": "2026-10-27",
+    "subDate": "2026-10-27",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_24",
+    "category": "assignment",
+    "title": "Ch 27 Employment and unemployment",
+    "fromDate": "2026-10-28",
+    "subDate": "2026-10-28",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_25",
+    "category": "assignment",
+    "title": "Ch 28 Inflation",
+    "fromDate": "2026-10-29",
+    "subDate": "2026-10-29",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_26",
+    "category": "assignment",
+    "title": "Section 4 practice questions, calculations\nTest 6: Ch 26 to 28",
+    "fromDate": "2026-10-30",
+    "subDate": "2026-10-30",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_27",
+    "category": "assignment",
+    "title": "Ch 29 Living standards\nCh 30 Poverty",
+    "fromDate": "2026-10-31",
+    "subDate": "2026-10-31",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_28",
+    "category": "assignment",
+    "title": "Ch 31 Population\nCh 32 Differences in economic development between countries",
+    "fromDate": "2026-11-01",
+    "subDate": "2026-11-01",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_29",
+    "category": "assignment",
+    "title": "Section 5 practice questions, corrections\nTest 7: Ch 29 to 32",
+    "fromDate": "2026-11-02",
+    "subDate": "2026-11-02",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_30",
+    "category": "assignment",
+    "title": "Ch 33 Specialisation and free trade\nCh 34 Globalisation and trade restrictions",
+    "fromDate": "2026-11-03",
+    "subDate": "2026-11-03",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_31",
+    "category": "assignment",
+    "title": "Ch 34 continued: MNCs and trade restrictions",
+    "fromDate": "2026-11-04",
+    "subDate": "2026-11-04",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_32",
+    "category": "assignment",
+    "title": "Ch 35 Foreign exchange rates",
+    "fromDate": "2026-11-05",
+    "subDate": "2026-11-05",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_33",
+    "category": "assignment",
+    "title": "Ch 36 Current account of the balance of payments",
+    "fromDate": "2026-11-06",
+    "subDate": "2026-11-06",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_34",
+    "category": "assignment",
+    "title": "Section 6 practice questions, recap\nTest 8: Ch 33 to 36",
+    "fromDate": "2026-11-07",
+    "subDate": "2026-11-07",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_35",
+    "category": "assignment",
+    "title": "Corrections, then weakest chapters first",
+    "fromDate": "2026-11-08",
+    "subDate": "2026-11-08",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_36",
+    "category": "assignment",
+    "title": "FULL PAPER PRACTICE TEST",
+    "fromDate": "2026-11-09",
+    "subDate": "2026-11-09",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_37",
+    "category": "assignment",
+    "title": "FULL PAPER PRACTICE TEST",
+    "fromDate": "2026-11-10",
+    "subDate": "2026-11-10",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_38",
+    "category": "assignment",
+    "title": "FULL PAPER PRACTICE TEST",
+    "fromDate": "2026-11-11",
+    "subDate": "2026-11-11",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_39",
+    "category": "assignment",
+    "title": "Timed mixed past paper practice (multiple choice and structured questions)",
+    "fromDate": "2026-11-12",
+    "subDate": "2026-11-12",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_40",
+    "category": "assignment",
+    "title": "Timed mixed past paper practice (structured questions on all chapters)",
+    "fromDate": "2026-11-13",
+    "subDate": "2026-11-13",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_41",
+    "category": "assignment",
+    "title": "Mark both days' practice with mark schemes, note gaps",
+    "fromDate": "2026-11-14",
+    "subDate": "2026-11-14",
+    "done": false
+  },
+  {
+    "id": "econ_assignment_42",
+    "category": "assignment",
+    "title": "Light recap of definitions, formulas and diagrams; rest",
+    "fromDate": "2026-11-15",
+    "subDate": "2026-11-15",
+    "done": false
+  }
+];
+if (!Array.isArray(store.hw)) store.hw = [];
+const existingAssignmentIds = new Set(store.hw.filter(t => t.category === "assignment").map(t => t.id));
+economicsAssignments.forEach(item => {
+  if (!existingAssignmentIds.has(item.id)) store.hw.push(item);
+});
+
+let currentSection = "hw";
+let currentHwCategory = "hw"; 
+let filter = "all";
+
+const $ = id => document.getElementById(id);
+
+function save() {
+  localStorage.setItem(KEY, JSON.stringify(store));
+}
+
+function escapeHTML(s) {
+  return (s || "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+  }[c]));
+}
+
+function formatDate(d) {
+  if (!d) return "";
+  const x = new Date(d + "T00:00:00");
+  return x.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
+function switchSection(sec) {
+  currentSection = sec;
+  document.querySelectorAll(".tab-btn").forEach((btn, idx) => {
+    btn.classList.toggle("active", ["hw", "todo", "test"][idx] === sec);
+  });
+  document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+  $(sec + "-section").classList.add("active");
+  render();
+}
+
+function switchHwCategory(cat) {
+  currentHwCategory = cat;
+  $("subTabHw").classList.toggle("active", cat === "hw");
+  $("subTabAssignment").classList.toggle("active", cat === "assignment");
+  $("hwSubmitBtn").textContent = cat === "hw" ? "＋ Add HW" : "＋ Add Assignment";
+  render();
+}
+
+function render() {
+  const q = $("search").value.toLowerCase().trim();
+  let list = store[currentSection] || [];
+  
+  if (currentSection === "hw") {
+    list = list.filter(t => (t.category || "hw") === currentHwCategory);
+  }
+
+  let shown = list.filter(t => {
+    const passFilter = filter === "all" || (filter === "done" && t.done) || (filter === "active" && !t.done);
+    const textSearch = (t.title || t.subject || "").toLowerCase().includes(q) || (t.chapter || "").toLowerCase().includes(q);
+    return passFilter && textSearch;
+  });
+
+  $("taskList").innerHTML = shown.length ? shown.map(t => {
+    let metaHTML = "";
+    let titleHTML = "";
+
+    if (currentSection === "hw") {
+      titleHTML = escapeHTML(t.title).replace(/\n/g, "<br>");
+      metaHTML = t.category === "assignment" ? `
+        <span class="badge">Date: ${formatDate(t.fromDate)}</span>
+        <span class="badge">Economics Study Plan</span>
+      ` : `
+        <span class="badge">From: ${formatDate(t.fromDate)}</span>
+        <span class="badge">Submission: ${formatDate(t.subDate)}</span>
+      `;
+    } else if (currentSection === "todo") {
+      titleHTML = escapeHTML(t.title);
+      metaHTML = `<span class="badge ${t.priority}">${t.priority[0].toUpperCase() + t.priority.slice(1)} priority</span>`;
+      if (t.imgUrl) {
+        metaHTML += `<br><img src="${escapeHTML(t.imgUrl)}" class="task-img" alt="Task attachment" onerror="this.style.display='none'">`;
+      }
+    } else if (currentSection === "test") {
+      titleHTML = `[${escapeHTML(t.subject)}] ${escapeHTML(t.chapter)}`;
+      metaHTML = `
+        <span class="badge ${t.priority}">${t.priority[0].toUpperCase() + t.priority.slice(1)}</span>
+        <span class="badge">Study Plan: ${formatDate(t.planDate)}</span>
+        <span class="badge">Test Date: ${formatDate(t.testDate)}</span>
+      `;
+    }
+
+    return `
+      <div class="task ${t.done ? "done" : ""}">
+        <button class="check" onclick="toggle('${t.id}')" title="${t.done ? "Mark not done" : "Mark done"}">${t.done ? "✓" : "○"}</button>
+        <div>
+          <div class="title">${titleHTML}</div>
+          <div class="meta">${metaHTML}</div>
+        </div>
+        <div class="actions">
+          <button class="editbtn" onclick="editTask('${t.id}')" title="Edit">✏️ Edit</button>
+          ${t.done ? `<button class="notbtn" onclick="toggle('${t.id}')">Not Done</button>` : `<button class="donebtn" onclick="toggle('${t.id}')">Done</button>`}
+          <button class="delete" onclick="removeTask('${t.id}')">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join("") : `<div class="empty"><div style="font-size:42px">📝</div><b>No items here</b><br>Add an entry above to get started.</div>`;
+
+  $("total").textContent = list.length;
+  $("completed").textContent = list.filter(t => t.done).length;
+  $("remaining").textContent = list.filter(t => !t.done).length;
+}
+
+function toggle(id) {
+  const t = store[currentSection].find(x => x.id === id);
+  if (t) t.done = !t.done;
+  save();
+  render();
+}
+
+function editTask(id) {
+  const t = store[currentSection].find(x => x.id === id);
+  if (!t) return;
+
+  if (currentSection === "hw") {
+    const newTitle = prompt("Edit Title:", t.title);
+    if (newTitle !== null && newTitle.trim() !== "") t.title = newTitle.trim();
+
+    const newFrom = prompt("Edit From Date (YYYY-MM-DD):", t.fromDate || "");
+    if (newFrom !== null && newFrom.trim() !== "") t.fromDate = newFrom.trim();
+
+    const newSub = prompt("Edit Submission Date (YYYY-MM-DD):", t.subDate || "");
+    if (newSub !== null && newSub.trim() !== "") t.subDate = newSub.trim();
+
+    const newCategory = confirm(
+      "Click OK for HW.\nClick Cancel for Assignment.\n\nCurrent: " +
+      (t.category === "assignment" ? "Assignment" : "HW")
+    );
+    t.category = newCategory ? "hw" : "assignment";
+
+  } else if (currentSection === "todo") {
+    const newTitle = prompt("Edit Task Title:", t.title);
+    if (newTitle !== null && newTitle.trim() !== "") t.title = newTitle.trim();
+
+    const newImg = prompt("Edit Image URL (leave blank to remove it):", t.imgUrl || "");
+    if (newImg !== null) t.imgUrl = newImg.trim();
+
+    const newPriority = prompt(
+      "Edit Priority: type high, medium, or low",
+      t.priority || "medium"
+    );
+    if (newPriority !== null && ["high","medium","low"].includes(newPriority.trim().toLowerCase())) {
+      t.priority = newPriority.trim().toLowerCase();
+    }
+
+  } else if (currentSection === "test") {
+    const newSubject = prompt("Edit Subject:", t.subject);
+    if (newSubject !== null && newSubject.trim() !== "") t.subject = newSubject.trim();
+
+    const newChapter = prompt("Edit Chapter / Topics:", t.chapter);
+    if (newChapter !== null && newChapter.trim() !== "") t.chapter = newChapter.trim();
+
+    const newPlan = prompt("Edit Study Plan Date (YYYY-MM-DD):", t.planDate || "");
+    if (newPlan !== null && newPlan.trim() !== "") t.planDate = newPlan.trim();
+
+    const newTestDate = prompt("Edit Test Date (YYYY-MM-DD):", t.testDate || "");
+    if (newTestDate !== null && newTestDate.trim() !== "") t.testDate = newTestDate.trim();
+
+    const newPriority = prompt(
+      "Edit Priority: type high, medium, or low",
+      t.priority || "medium"
+    );
+    if (newPriority !== null && ["high","medium","low"].includes(newPriority.trim().toLowerCase())) {
+      t.priority = newPriority.trim().toLowerCase();
+    }
+  }
+
+  save();
+  render();
+}
+
+function removeTask(id) {
+  store[currentSection] = store[currentSection].filter(t => t.id !== id);
+  save();
+  render();
+}
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function addHWTask(e) {
+  e.preventDefault();
+  store.hw.push({
+    id: generateId(),
+    category: currentHwCategory,
+    title: $("hwTitle").value.trim(),
+    fromDate: $("hwFromDate").value,
+    subDate: $("hwSubDate").value,
+    done: false
+  });
+  $("hwTitle").value = ""; $("hwFromDate").value = ""; $("hwSubDate").value = "";
+  save(); render();
+}
+
+function addTodoTask(e) {
+  e.preventDefault();
+  store.todo.push({
+    id: generateId(),
+    title: $("todoTitle").value.trim(),
+    imgUrl: $("todoImg").value.trim(),
+    priority: $("todoPriority").value,
+    done: false
+  });
+  $("todoTitle").value = ""; $("todoImg").value = "";
+  save(); render();
+}
+
+function addTestTask(e) {
+  e.preventDefault();
+  store.test.push({
+    id: generateId(),
+    subject: $("testSubject").value.trim(),
+    chapter: $("testChapter").value.trim(),
+    planDate: $("testPlanDate").value,
+    testDate: $("testDate").value,
+    priority: $("testPriority").value,
+    done: false
+  });
+  $("testSubject").value = ""; $("testChapter").value = "";
+  $("testPlanDate").value = ""; $("testDate").value = "";
+  save(); render();
+}
+
+document.querySelectorAll(".filter").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".filter").forEach(x => x.classList.remove("active"));
+  b.classList.add("active");
+  filter = b.dataset.filter;
+  render();
+});
+
+$("search").oninput = render;
+render();
+</script>
+</body>
+</html>
